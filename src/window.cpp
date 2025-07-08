@@ -169,24 +169,56 @@ void VFS::init() {
 	}
 }*/
 
-ResolvedPath VFS::resolve(const std::string& relativePath) {
+/*ResolvedPath VFS::resolve(const std::string& relativePath) {
 	std::filesystem::path abs;
 	std::filesystem::path rel(relativePath);
 
 	// Checks for a valid basePath
 	if (basePath.empty()) {
 		log(Error, "[VFS::Resolve]: Did you forget to init VFS? basePath cannot be empty");
-		return ResolvedPath{ rel, false };
+		//return ResolvedPath{ rel, false };
+		return ResolvedPath(rel, false);
 	}
 
 	// Gets abs path;
 	abs = basePath / rel.relative_path(); // <-- .relative_path() allows '/' to be used at the start of path and forces the relPath to be relative.
 	if (exists(abs.string(), ABS_PATH)) {
-		return ResolvedPath{ abs, true };
+		//return ResolvedPath{ abs, true };
+		return ResolvedPath(abs, true);
 	}
 
-	return ResolvedPath{ rel, false };
+	//return ResolvedPath{ rel, false };
+	return ResolvedPath(rel, false);
+}*/
+
+ResolvedPath VFS::resolve(const std::string& relativePath) {
+	if (basePath.empty()) {
+		log(Error, "[VFS::resolve]: VFS base path not initialized. Did you forget to initialize VFS?");
+		return ResolvedPath(std::filesystem::path(relativePath), false);
+	}
+
+	std::filesystem::path rel(relativePath);
+	std::filesystem::path abs = basePath / rel;
+
+	// Attempt canonical path
+	std::filesystem::path finalPath;
+	try {
+		finalPath = std::filesystem::canonical(abs);
+	}
+	catch (const std::filesystem::filesystem_error&) {
+		finalPath = abs.lexically_normal();
+	}
+
+	// Check path existance:
+	if (std::filesystem::exists(abs)) {
+		return ResolvedPath(finalPath, true);
+	}
+	else {
+		log(WARNING, "[VFS::resolve]: Could not resolve '%s'. Full attempted path: '%s'", relativePath.c_str(), finalPath.string().c_str());
+		return ResolvedPath(finalPath, false);
+	}
 }
+
 
 bool VFS::exists(const std::string& path, PathType type) {
 	switch (type)

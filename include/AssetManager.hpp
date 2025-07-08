@@ -31,7 +31,7 @@ public:
 	static void listLoadedAssets();
 
 	template<typename T>
-	static void registerAsset(const std::string& assetID, const std::string& path, bool allowOverwrite = false);
+	void registerAsset(const std::string& assetID, const std::string& path, bool allowOverwrite = false);
 	static void registerAssetsFromManifest(const std::string& manifestPath, bool allowOverwrite = false);
 
 	template<typename T>

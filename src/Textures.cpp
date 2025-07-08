@@ -1,9 +1,6 @@
 #include "Textures.hpp"
 #include "AssetManager.hpp" // This feels super dodgy
 
-std::unordered_map<std::string, std::shared_ptr<Texture>> TextureMngr::textures;
-std::shared_ptr<Texture> TextureMngr::checkeredTexture = nullptr;
-
 Texture::~Texture() {
     SDL_DestroyTexture(tex);
 }
@@ -80,56 +77,31 @@ std::shared_ptr<Texture> createFallbackTexture(SDL_Renderer* renderer, int width
 
 }
 
-
-void TextureMngr::unload(const std::string& textureID) {
-    if (textures.find(textureID) == textures.end()) {
-        //No need to output a warning. The end-user is expecting the texture to be removed anyway.
+void renderTexture(SDL_Renderer* renderer, const std::shared_ptr<Texture>& texturePtr, SDL_Point pos, const std::string& name) {
+    if (texturePtr == nullptr) {
+        log(Error, "[Texture Renderer]: Texture '%s' is invalid(nullptr)", name.c_str());
         return;
     }
+    if (texturePtr->tex == nullptr) {
+        log(Error, "[Texture Renderer]: Texture '%s' has invalid internal surface", name.c_str());
+        return;
+    }
+    // No real way to veriy w & h?
 
-    textures.erase(textureID); // Does the internal SDL_Texture get freed by Texture destructor?
-    return;
+    SDL_Rect rect = {pos.x, pos.y, texturePtr->w, texturePtr->h};
+    SDL_RenderCopy(renderer, texturePtr->tex, nullptr, &rect);
 }
 
-std::shared_ptr<Texture> TextureMngr::resolve(SDL_Renderer* renderer, const std::string& textureID, const std::string& filePath) {
-    //Requires a renderer context!
-    if (renderer == nullptr) {
-        //std::printf("[Error]: Global Texture Manager has no assigned renderer!\n");
-        return nullptr;
+void renderTexture(SDL_Renderer* renderer, SDL_Point pos, const std::string& textureID) {
+    const auto& assets = AssetManager::get();
+    auto& tex = assets.use<Texture>(textureID);
+
+    if (tex == nullptr || tex->tex == nullptr) {
+        log(WARNING, "[Texture Renderer]: Invalid texture data for asset: '%s'. Will use fallback texture", textureID.c_str());
+        tex = createFallbackTexture(renderer);
     }
 
-    // Check to see if a fall-back texture has been generated, if not generate one now!
-    if (checkeredTexture == nullptr) {
-        checkeredTexture = createFallbackTexture(renderer, 32, 32);
-    }
-
-    // check the cache for a loaded texture:
-    if (textures.find(textureID) != textures.end()) {
-        // One exists, dont relaod it.
-        return textures[textureID];
-    }
-
-    //No cached texture, load it now.
-    // Load texture and confirm state
-    std::shared_ptr<Texture> textPtr = loadTexture(renderer, filePath);
-    if (textPtr == nullptr || textPtr->tex == nullptr) {
-#ifdef _DEBUG
-        std::printf("[Error]: Failed to load '%s', defaulting to checkered texture\n", filePath.c_str());
-#endif
-        return nullptr;
-    }
-
-    // Cache the newly loaded texture for future use.
-    textures[textureID] = std::move(textPtr);
-
-    return textures[textureID];
-}
-
-bool TextureMngr::queryTexture(const std::string& textureID) {
-    if (textures.find(textureID) != textures.end()) {
-        return true;
-    }
-    else { return false; }
+    renderTexture(renderer, tex, pos, textureID);
 }
 
 void Spritesheet::addSubTexture(const std::string& subID, const std::string& textureID, SDL_Rect region) {

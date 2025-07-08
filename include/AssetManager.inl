@@ -106,11 +106,11 @@ std::shared_ptr<T> AssetManager::use(const std::string& id) {
 template<typename T>
 void AssetManager::registerAsset(const std::string& assetID, const std::string& path, bool allowOverwrite) {
 	// Check if the path exists:
-	auto res = VFS::resolve(path);
+	auto& res = VFS::resolve(path);
 	if (!res.success) {
-		std::cout << res.path << std::endl;
+		std::cout << res.path.string() << " nbool: " << res.success << std::endl;
 		// Failed to resolve rel into abs path
-		log(Error, "[Asset Manager}: The path: '%s' for assetID: '%s' is invalid", res.path.c_str(), assetID.c_str());
+		log(Error, "[Asset Manager}: The path: '%s' for assetID: '%s' is invalid", res.path.string().c_str(), assetID.c_str());
 		return;
 	}
 
